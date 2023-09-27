@@ -10,7 +10,7 @@ public class LineTrackUI : Form
     private const int MIN_HEIGHT = 800;
     private const int SPACER = 25;
     private const int BALL_DIAMETER = 50;
-    private const float CLOCK_RATE = 144.0f;
+    private const float CLOCK_RATE = 71.429f;
 
     private int width;
     private int height;
@@ -19,7 +19,7 @@ public class LineTrackUI : Form
     private GraphicPanel graph_panel;
     private Panel control_panel;
 
-    private RectangleF ball_rectangle;
+    private static RectangleF ball_rectangle;
     private float speed;
     private PointF delta;
 
@@ -32,11 +32,11 @@ public class LineTrackUI : Form
     private TrackBar slider;
     private Label speed_label;
 
-    private Rectangle bounding_box;
-    private Point v1;
-    private Point v2;
+    private static Rectangle bounding_box;
+    private static Point v1;
+    private static Point v2;
 
-    private Timer clock;
+    private static Timer clock;
 
 
     public LineTrackUI()
@@ -114,10 +114,9 @@ public class LineTrackUI : Form
         slider.Left = toggle_button.Right + 2*SPACER;
         slider.Top = (control_panel.Height - slider.Height) / 2;
         slider.Maximum = 2000;
-        slider.Minimum = 0;
+        slider.Minimum = -2000;
         slider.TickFrequency = 100;
         slider.Scroll += ChangeSpeed;
-        slider.Enabled = false;
         control_panel.Controls.Add( slider );
 
         graph_panel = new GraphicPanel( this );
@@ -148,12 +147,6 @@ public class LineTrackUI : Form
     {
         speed = (float) slider.Value;
         speed_label.Text = "" + speed + " pixel/sec";
-
-        float distance = (float) Math.Sqrt( Math.Pow( v2.X - v1.X, 2 ) + Math.Pow( v2.Y - v1.Y, 2 ) );
-        Console.WriteLine(distance);
-        delta.X = (v2.X - v1.X) * speed / distance / 1000;
-        delta.Y = (v2.Y - v1.Y) * speed / distance / 1000;
-        Console.WriteLine(delta);
     }
 
     public void ToggleState( Object obj, EventArgs evt )
@@ -169,14 +162,11 @@ public class LineTrackUI : Form
             y1.Enabled = true;
             x2.Enabled = true;
             y2.Enabled = true;
-            slider.Enabled = false;
 
             graph_panel.Invalidate();
-            
         }
         else
         {
-
             try
             {
                 Point v1temp = new Point( int.Parse( x1.Text ), int.Parse( y1.Text ) );
@@ -197,9 +187,34 @@ public class LineTrackUI : Form
                     y1.Enabled = false;
                     x2.Enabled = false;
                     y2.Enabled = false;
-                    slider.Enabled = true;
 
                     ball_rectangle.Location = v1;
+                    Console.WriteLine(ball_rectangle.Location);
+
+                    float distance = (float) Math.Sqrt( Math.Pow( v2.X - v1.X, 2 ) + Math.Pow( v2.Y - v1.Y, 2 ) );
+                    // Notice speed is not accounted for in deltaX
+                    // This is so speed can be changed 
+                    delta.X = (v2.X - v1.X) / CLOCK_RATE / distance;
+                    delta.Y = (v2.Y - v1.Y) / CLOCK_RATE / distance;
+
+                    if( v2.X == v1.X )
+                    {
+                        if( v1.Y > v2.Y )
+                        {
+                            // Ensures that v2.Y is always below or equal to v1.Y
+                            // in the event that v1.X and v2.X are equal
+                            Point temp = v1;
+                            v1 = v2;
+                            v2 = temp;
+                        }
+                    }
+                    else if( v2.X < v1.X )
+                    {
+                        // Ensures that v2 is always to the right of v1
+                        Point temp = v1;
+                        v1 = v2;
+                        v2 = temp;
+                    }
 
                     clock.Start();
 
@@ -222,16 +237,44 @@ public class LineTrackUI : Form
         }
     }
 
-    private void ParseText( Object obj, EventArgs evt )
-    {
-    }
-
     private void UpdateBall( Object obj, EventArgs evt )
     {
-        ball_rectangle.Offset( delta );
+        if( v1 != v2 )
+        {    
+            ball_rectangle.Offset( delta.X * speed, delta.Y * speed );
 
+            if( v1.X == v2.X )
+            {
+                if( ball_rectangle.Location.Y >= v2.Y )
+                {
+                    ball_rectangle.Location = v2;
+                    delta = new PointF( delta.X * -1, delta.Y * -1 );
+                    Console.WriteLine("" + ball_rectangle.Location );
+
+                }
+                else if( ball_rectangle.Location.Y <= v1.Y )
+                {
+                    ball_rectangle.Location = v1;
+                    delta = new PointF( delta.X * -1, delta.Y * -1 );
+                    Console.WriteLine("" + ball_rectangle.Location );
+
+                }
+            }
+            else if( ball_rectangle.Location.X >= v2.X )
+            {
+                ball_rectangle.Location = v2;
+                delta = new PointF( delta.X * -1, delta.Y * -1 );
+                Console.WriteLine("" + ball_rectangle.Location );
+            }
+            else if( ball_rectangle.Location.X <= v1.X )
+            {
+                ball_rectangle.Location = v1;
+                delta = new PointF( delta.X * -1, delta.Y * -1 );
+                Console.WriteLine("" + ball_rectangle.Location );
+            }
+        }
+        
         graph_panel.Invalidate();
-
     }
 
     private void CloseWindow( object obj, EventArgs evt )
@@ -260,34 +303,40 @@ public class LineTrackUI : Form
 
             Graphics g = ee.Graphics;
 
-            if( ui.clock.Enabled ) 
+            if( clock.Enabled ) 
             { 
-                g.DrawLine( black_pen, ui.v1, ui.v2 ); 
+                g.DrawLine( black_pen, v1, v2 ); 
+                g.FillEllipse( 
+                    Brushes.Black, 
+                    ball_rectangle.Location.X - (BALL_DIAMETER + 4) / 2, 
+                    ball_rectangle.Location.Y - (BALL_DIAMETER + 4) / 2,
+                    ball_rectangle.Size.Width + 4, 
+                    ball_rectangle.Size.Height + 4 );
                 g.FillEllipse( 
                     Brushes.Yellow, 
-                    ui.ball_rectangle.Location.X - BALL_DIAMETER / 2, 
-                    ui.ball_rectangle.Location.Y - BALL_DIAMETER / 2,
-                    ui.ball_rectangle.Size.Width, 
-                    ui.ball_rectangle.Size.Height );
+                    ball_rectangle.Location.X - BALL_DIAMETER / 2, 
+                    ball_rectangle.Location.Y - BALL_DIAMETER / 2,
+                    ball_rectangle.Size.Width, 
+                    ball_rectangle.Size.Height );
                 
             }
             else 
             { 
-                g.DrawRectangle( black_pen, ui.bounding_box );
+                g.DrawRectangle( black_pen, bounding_box );
 
                 string str_draw = "(0, 0)\0";
                 Size str_size = TextRenderer.MeasureText( str_draw, font );
                 g.DrawString( 
                     str_draw, font, Brushes.Black,
-                    ui.bounding_box.Left - str_size.Width / 2,
-                    ui.bounding_box.Top - str_size.Height - 10);
+                    bounding_box.Left - str_size.Width / 2,
+                    bounding_box.Top - str_size.Height - 10);
 
-                str_draw = "(" + (ui.bounding_box.Width-1) + ", " + (ui.bounding_box.Height-1) + ")\0";
+                str_draw = "(" + (bounding_box.Width-1) + ", " + (bounding_box.Height-1) + ")\0";
                 str_size = TextRenderer.MeasureText( str_draw, font );
                 g.DrawString( 
                     str_draw, font, Brushes.Black,
-                    ui.bounding_box.Right - TextRenderer.MeasureText( str_draw, font ).Width / 2,
-                    ui.bounding_box.Bottom + 10 );
+                    bounding_box.Right - TextRenderer.MeasureText( str_draw, font ).Width / 2,
+                    bounding_box.Bottom + 10 );
             }
         }
     }
