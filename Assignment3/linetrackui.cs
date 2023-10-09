@@ -5,9 +5,8 @@ using System.Drawing;
 
 public class LineTrackUI : Form
 {
-
-    private const int MIN_WIDTH = 1200;
-    private const int MIN_HEIGHT = 800;
+    private const int MIN_WIDTH = 1000;
+    private const int MIN_HEIGHT = 470;
     private const int SPACER = 25;
     private const int BALL_DIAMETER = 50;
     private const float CLOCK_RATE = 71.429f;
@@ -35,6 +34,8 @@ public class LineTrackUI : Form
     private static Rectangle bounding_box;
     private static Point v1;
     private static Point v2;
+    private Point sv1;
+    private Point sv2;
 
     private static Timer clock;
 
@@ -45,6 +46,7 @@ public class LineTrackUI : Form
         height = 800;
 
         this.Size = new Size( width+16, height+39 );
+        this.MinimumSize = new Size( MIN_WIDTH+16, MIN_HEIGHT+39 );
 
         header_panel = new Panel();
         header_panel.Size = new Size( width, 150 );
@@ -60,24 +62,28 @@ public class LineTrackUI : Form
         x1.Size = new Size( 50, 20 );
         x1.Left = 2*SPACER;
         x1.Top = (control_panel.Height - x1.Height) / 2;
+        x1.TextChanged += new EventHandler( TextBoxFocused );
         control_panel.Controls.Add( x1 );
 
         y1 = new TextBox();
         y1.Size = x1.Size;
         y1.Left = x1.Right + SPACER;
         y1.Top = x1.Top;
+        y1.TextChanged += new EventHandler( TextBoxFocused );
         control_panel.Controls.Add( y1 );
 
         x2 = new TextBox();
         x2.Size = x1.Size;
         x2.Left = y1.Right + 2*SPACER;
         x2.Top = x1.Top;
+        x2.TextChanged += new EventHandler( TextBoxFocused );
         control_panel.Controls.Add( x2 );
 
         y2 = new TextBox();
         y2.Size = x1.Size;
         y2.Left = x2.Right + SPACER;
         y2.Top = x1.Top;
+        y2.TextChanged += new EventHandler( TextBoxFocused );
         control_panel.Controls.Add( y2 );
 
         toggle_button = new Button();
@@ -87,6 +93,7 @@ public class LineTrackUI : Form
         toggle_button.Text = "Go";
         toggle_button.Font = new Font( "Times New Roman", 30, FontStyle.Bold );
         toggle_button.BackColor = Color.LightGreen;
+        this.AcceptButton = toggle_button;
         toggle_button.Click += new EventHandler( ToggleState );
         control_panel.Controls.Add( toggle_button );
 
@@ -110,12 +117,14 @@ public class LineTrackUI : Form
         control_panel.Controls.Add( speed_label );
 
         slider = new TrackBar();
-        slider.Width = speed_label.Left - toggle_button.Right - 2*SPACER;
-        slider.Left = toggle_button.Right + 2*SPACER;
+        slider.Width = speed_label.Left - toggle_button.Right - SPACER;
+        slider.Left = toggle_button.Right + SPACER;
         slider.Top = (control_panel.Height - slider.Height) / 2;
         slider.Maximum = 2000;
         slider.Minimum = -2000;
-        slider.TickFrequency = 100;
+        slider.LargeChange = 200;
+        slider.SmallChange = 10;
+        slider.TickStyle = TickStyle.None;
         slider.Scroll += ChangeSpeed;
         control_panel.Controls.Add( slider );
 
@@ -124,9 +133,9 @@ public class LineTrackUI : Form
         graph_panel.Top = header_panel.Bottom;
         this.Controls.Add( graph_panel );
 
-        v1 = new Point( 2*SPACER, 2*SPACER );
-        v2 = new Point( width - 2*SPACER, graph_panel.Height - 2*SPACER );
-        bounding_box = new Rectangle( v1, new Size( v2.X - v1.X, v2.Y - v1.Y ) );
+        sv1 = new Point( 2*SPACER, 2*SPACER );
+        sv2 = new Point( width - 2*SPACER, graph_panel.Height - 2*SPACER );
+        bounding_box = new Rectangle( sv1, new Size( sv2.X - sv1.X, sv2.Y - sv1.Y ) );
 
         ball_rectangle = new RectangleF( 0, 0, BALL_DIAMETER, BALL_DIAMETER );
         delta = new PointF( 0, 0 );
@@ -139,6 +148,8 @@ public class LineTrackUI : Form
         Console.WriteLine(clock.Interval);
         clock.Tick += new EventHandler( UpdateBall );
         
+        this.Resize += new EventHandler( ResizeElements );
+
         this.CenterToScreen();
     }
 
@@ -147,6 +158,13 @@ public class LineTrackUI : Form
     {
         speed = (float) slider.Value;
         speed_label.Text = "" + speed + " pixel/sec";
+    }
+
+    public void TextBoxFocused( object obj, EventArgs evt )
+    {
+        TextBox sender = (TextBox) obj;
+
+        sender.BackColor = Color.Empty;
     }
 
     public void ToggleState( Object obj, EventArgs evt )
@@ -229,6 +247,15 @@ public class LineTrackUI : Form
             catch( FormatException )
             {
                 Console.WriteLine( "Non-Numeric Input Detected... Please try again." );
+
+                try { int.Parse( x1.Text ); }
+                catch( FormatException ) { x1.BackColor = Color.Red; }
+                try { int.Parse( y1.Text ); }
+                catch( FormatException ) { y1.BackColor = Color.Red; }
+                try { int.Parse( x2.Text ); }
+                catch( FormatException ) { x2.BackColor = Color.Red; }
+                try { int.Parse( y2.Text ); }
+                catch( FormatException ) { y2.BackColor = Color.Red; }
             }
             catch( ArgumentException )
             {
@@ -277,11 +304,33 @@ public class LineTrackUI : Form
         graph_panel.Invalidate();
     }
 
-    private void CloseWindow( object obj, EventArgs evt )
+    private void ResizeElements( object obj, EventArgs evt ) 
     {
+        if( clock.Enabled ) { ToggleState( obj, evt ); }
 
-        this.Close();
+        control_panel.Top = this.Height - 39 - control_panel.Height;
+
+        graph_panel.Height = control_panel.Top - header_panel.Bottom;
+        graph_panel.Width = this.Width - 16;
+
+        sv2 = new Point( graph_panel.Width - 2*SPACER, graph_panel.Height - 2*SPACER );
+        bounding_box = new Rectangle( sv1, new Size( sv2.X - sv1.X, sv2.Y - sv1.Y ) );
+        graph_panel.Invalidate();
+
+        control_panel.Width = this.Width - 16;
+
+        exit_button.Left = control_panel.Width - exit_button.Width - 2*SPACER;
+        speed_label.Left = exit_button.Left - speed_label.Width - 2*SPACER;
+        slider.Width = speed_label.Left - toggle_button.Right - SPACER;
+        slider.Left = toggle_button.Right + SPACER;
+
+        control_panel.Invalidate();
+
+        Console.WriteLine( ((Control)obj).Size);
+
     }
+
+    private void CloseWindow( object obj, EventArgs evt ) { this.Close(); }
 
     private class GraphicPanel : Panel
     {
