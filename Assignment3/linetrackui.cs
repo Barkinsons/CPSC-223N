@@ -1,8 +1,42 @@
+//****************************************************************************************************************************
+// Program name: "Linear Racetrack".  This programs accepts a demonstrates how to move a ball between two points             *
+// Copyright (C) 2023 Jared Sevilla                                                                                          *
+// This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License *
+// version 3 as published by the Free Software Foundation.                                                                   *
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied        *
+// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.    *
+// A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                          *
+//****************************************************************************************************************************
+
+
+//Ruler:=1=========2=========3=========4=========5=========6=========7=========8=========9=========
+
+//Author: Jared Sevilla
+//Mail: jgsevilla@csu.fullerton.edu
+//      jaredgsevilla@gmail.com
+
+//Program name: Linear Racetrack
+//Programming language: C Sharp
+//Date development of program began: 2023-Oct-2
+//Date of last update: 2023-Oct-8
+
+//Purpose:  This program demonstrates moving a ball on a linear track.
+
+//Files in project: linetrackmain.cs, linetrackui.cs, build.sh
+
+//This file's name: linetrackui.cs
+//This file purpose: This file will activate the user interface
+//Date last modified: 2023-Oct-8
+
+//Libraries used: System.Windows.Forms.dll, System.Drawing.dll
+
+
+// ***** PROGRAM STARTS HERE **********************************************************************
 using System;
 using System.Windows.Forms;
 using System.Drawing;
 
-
+// User Interface Class
 public class LineTrackUI : Form
 {
     private const int MIN_WIDTH = 1000;
@@ -22,6 +56,9 @@ public class LineTrackUI : Form
     private float speed;
     private PointF delta;
 
+    private Label title;
+    private Label author;
+
     private TextBox x1;
     private TextBox y1;
     private TextBox x2;
@@ -39,7 +76,7 @@ public class LineTrackUI : Form
 
     private static Timer clock;
 
-
+    // Constructor
     public LineTrackUI()
     {
         width = 1200;
@@ -53,9 +90,31 @@ public class LineTrackUI : Form
         header_panel.Location = new Point( 0, 0 );
         this.Controls.Add( header_panel );
 
+        title = new Label();
+        title.Text = "Welcome to the Linear Racetrack!\0";
+        title.Font = new Font( "Times New Roman", 36, FontStyle.Bold );
+        title.Size = TextRenderer.MeasureText( title.Text, title.Font );
+        title.Location = new Point( 
+            (int) ((width - title.Width) / 2), 
+            SPACER 
+        );
+        header_panel.Controls.Add( title ); 
+
+        author = new Label();
+        author.Text = "by Jared Sevilla\0";
+        author.TextAlign = ContentAlignment.MiddleCenter;
+        author.Font = new Font( "Times New Roman", 18, FontStyle.Bold );
+        author.Size = TextRenderer.MeasureText( author.Text, author.Font );
+        author.Location = new Point( 
+            (int) ((width - author.Width) / 2), 
+            SPACER * 4
+        );
+        header_panel.Controls.Add( author );
+
         control_panel = new Panel();
         control_panel.Size = new Size( width, 170 );
         control_panel.Top = height - control_panel.Height;
+        control_panel.BackColor = Color.Gray;
         this.Controls.Add( control_panel );
 
         x1 = new TextBox();
@@ -140,12 +199,8 @@ public class LineTrackUI : Form
         ball_rectangle = new RectangleF( 0, 0, BALL_DIAMETER, BALL_DIAMETER );
         delta = new PointF( 0, 0 );
 
-        header_panel.BackColor = Color.Tomato;
-        control_panel.BackColor = Color.LightBlue;
-
         clock = new Timer();
         clock.Interval = (int) (1 / CLOCK_RATE * 1000);
-        Console.WriteLine(clock.Interval);
         clock.Tick += new EventHandler( UpdateBall );
         
         this.Resize += new EventHandler( ResizeElements );
@@ -153,13 +208,14 @@ public class LineTrackUI : Form
         this.CenterToScreen();
     }
 
-
+    // Trackbar Event Handler
     public void ChangeSpeed( Object obj, EventArgs evt )
     {
         speed = (float) slider.Value;
         speed_label.Text = "" + speed + " pixel/sec";
     }
 
+    // Textbox Selection Event Handler
     public void TextBoxFocused( object obj, EventArgs evt )
     {
         TextBox sender = (TextBox) obj;
@@ -167,8 +223,10 @@ public class LineTrackUI : Form
         sender.BackColor = Color.Empty;
     }
 
+    // Toggle Button Event Handler
     public void ToggleState( Object obj, EventArgs evt )
     {
+        // If ball is moving
         if( clock.Enabled )
         {
             clock.Stop();
@@ -187,12 +245,14 @@ public class LineTrackUI : Form
         {
             try
             {
+                // Parse input
                 Point v1temp = new Point( int.Parse( x1.Text ), int.Parse( y1.Text ) );
                 Point v2temp = new Point( int.Parse( x2.Text ), int.Parse( y2.Text ) );
 
                 v1temp += new Size( 2*SPACER, 2*SPACER );
                 v2temp += new Size( 2*SPACER, 2*SPACER );
 
+                // Test if coordinates are within bounding box
                 if( bounding_box.Contains( v1temp ) && bounding_box.Contains( v2temp ) )
                 {
                     v1 = v1temp;
@@ -207,11 +267,16 @@ public class LineTrackUI : Form
                     y2.Enabled = false;
 
                     ball_rectangle.Location = v1;
-                    Console.WriteLine(ball_rectangle.Location);
+
+                    /* -------------------------------------------------------------------------------------------
+                    | This is where delta is calculated
+                    --------------------------------------------------------------------------------------------*/
 
                     float distance = (float) Math.Sqrt( Math.Pow( v2.X - v1.X, 2 ) + Math.Pow( v2.Y - v1.Y, 2 ) );
-                    // Notice speed is not accounted for in deltaX
-                    // This is so speed can be changed 
+                    // Notice speed is not accounted for in delta
+                    // This is so speed can be changed
+                    // without delta needing to be changed
+                    // Speed is accounted for in update
                     delta.X = (v2.X - v1.X) / CLOCK_RATE / distance;
                     delta.Y = (v2.Y - v1.Y) / CLOCK_RATE / distance;
 
@@ -239,11 +304,18 @@ public class LineTrackUI : Form
                     return;
                 }
 
+                /* -------------------------------------------------------------------------------------------
+                | Input Validation when values are parsed correctly
+                --------------------------------------------------------------------------------------------*/
+                Console.WriteLine("Out-of-bounds coordinates detected...");
                 if( v1temp.X < bounding_box.Left || v1temp.X >= bounding_box.Right ) { x1.BackColor = Color.Red; }
                 if( v1temp.Y < bounding_box.Top || v1temp.Y >= bounding_box.Bottom ) { y1.BackColor = Color.Red; }
                 if( v2temp.X < bounding_box.Left || v2temp.X >= bounding_box.Right ) { x2.BackColor = Color.Red; }
                 if( v2temp.Y < bounding_box.Top || v2temp.Y >= bounding_box.Bottom ) { y2.BackColor = Color.Red; }
             }
+            /* -------------------------------------------------------------------------------------------
+            | Input Validation when values are unable to be parsed
+            --------------------------------------------------------------------------------------------*/
             catch( FormatException )
             {
                 Console.WriteLine( "Non-Numeric Input Detected... Please try again." );
@@ -264,6 +336,7 @@ public class LineTrackUI : Form
         }
     }
 
+    // Ball Update Event Handler
     private void UpdateBall( Object obj, EventArgs evt )
     {
         if( v1 != v2 )
@@ -276,14 +349,12 @@ public class LineTrackUI : Form
                 {
                     ball_rectangle.Location = v2;
                     delta = new PointF( delta.X * -1, delta.Y * -1 );
-                    Console.WriteLine("" + ball_rectangle.Location );
 
                 }
                 else if( ball_rectangle.Location.Y <= v1.Y )
                 {
                     ball_rectangle.Location = v1;
                     delta = new PointF( delta.X * -1, delta.Y * -1 );
-                    Console.WriteLine("" + ball_rectangle.Location );
 
                 }
             }
@@ -291,22 +362,26 @@ public class LineTrackUI : Form
             {
                 ball_rectangle.Location = v2;
                 delta = new PointF( delta.X * -1, delta.Y * -1 );
-                Console.WriteLine("" + ball_rectangle.Location );
             }
             else if( ball_rectangle.Location.X <= v1.X )
             {
                 ball_rectangle.Location = v1;
                 delta = new PointF( delta.X * -1, delta.Y * -1 );
-                Console.WriteLine("" + ball_rectangle.Location );
             }
         }
         
         graph_panel.Invalidate();
     }
 
+    // Form Resize Event Handler
     private void ResizeElements( object obj, EventArgs evt ) 
     {
         if( clock.Enabled ) { ToggleState( obj, evt ); }
+
+        header_panel.Width = this.Width - 16;
+
+        title.Left = (int) ((this.Width - title.Width) / 2);
+        author.Left = (int) ((this.Width - author.Width) / 2);
 
         control_panel.Top = this.Height - 39 - control_panel.Height;
 
@@ -325,12 +400,13 @@ public class LineTrackUI : Form
         slider.Left = toggle_button.Right + SPACER;
 
         control_panel.Invalidate();
-
-        Console.WriteLine( ((Control)obj).Size);
-
     }
 
-    private void CloseWindow( object obj, EventArgs evt ) { this.Close(); }
+    private void CloseWindow( object obj, EventArgs evt ) 
+    { 
+        this.Close(); 
+        Console.WriteLine("Returning to main...\n");
+    }
 
     private class GraphicPanel : Panel
     {
@@ -352,6 +428,7 @@ public class LineTrackUI : Form
 
             Graphics g = ee.Graphics;
 
+            // If ball is moving draw ball
             if( clock.Enabled ) 
             { 
                 g.DrawLine( black_pen, v1, v2 ); 
@@ -369,6 +446,7 @@ public class LineTrackUI : Form
                     ball_rectangle.Size.Height );
                 
             }
+            // If ball is not moving draw bounding box
             else 
             { 
                 g.DrawRectangle( black_pen, bounding_box );
