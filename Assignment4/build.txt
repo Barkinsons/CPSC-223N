@@ -1,0 +1,24 @@
+#file: build.sh
+#purpose: This is the build script for the Bouncy Ball Program.
+#author: Jared Sevilla
+#email: jgsevilla@csu.fullerton.edu
+#course: CPSC223N
+#program: Bouncy Ball
+#due: 6 November, 2023
+
+echo "Welcome to the Bouncy Ball Program build script!"
+
+echo "Removing old files..."
+rm *.dll
+rm *.exe
+
+echo "Compiling user interface..."
+mcs -t:library -r:System.Drawing -r:System.Windows.Forms -out:BouncyUserInterface.dll BouncyUserInterface.cs
+
+echo "Compiling main..."
+mcs -r:System.Windows.Forms -r:BouncyUserInterface.dll -out:Bouncy.exe BouncyMain.cs
+
+echo "Starting program...\n"
+./Bouncy.exe
+
+echo "Build script has terminated.\n
